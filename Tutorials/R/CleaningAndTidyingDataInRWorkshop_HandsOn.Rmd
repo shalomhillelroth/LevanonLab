@@ -1,0 +1,199 @@
+---
+title: "Cleaning and  tidying data in R"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+In this workshop, we will meet the following tools:
+
+  + *R Notebook* \
+  + *Data manipulation packages in R* \
+  + *LOGO plots in R using `ggseqlogo`.* \
+  
+
+# **Initial tools**
+**R Notebooks** \
+An [R Markdown](http://rmarkdown.rstudio.com) Notebook is a useful tool for documenting analysis methods and their output. When you execute code within the notebook, the results appear beneath the code. \
+
+We will work with this format for the convience of code reproducability and immediate output. To run a block you can either click the *Run* button within the chunk (right-hand side) or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. To add a new chunk you can click the *Insert Chunk* button on the toolbar or press *Ctrl+Alt+I*.  \
+
+You can use the https://github.com/rstudio/cheatsheets/blob/master/data-import.pdf cheat sheet for understanding and writing the format.
+\
+**Datasets** \
+We will be experimenting with the [`diamonds`](https://ggplot2.tidyverse.org/reference/diamonds.html) dataset, a built-in dataset as a part of the `ggplot2` library.
+
+# **Tidy tools**
+Let's look at some tools for tidying our data. 
+
+## Data management and analysis: dplyr
+First, meet `dplyr`. This package is your right-hand in all data analysis. It's major features are using relatively simple syntax to cover up base R's unintuitive one, the neat pipe operator (`%>%`), and the grouping feature. It allows preforming tasks such as: 
+
+  + **select** specific features (columns) of interest from the data set
+  + **filter** out irrelevant data and only keep observations (rows) of interest
+  + **mutate** a data set by adding more features (columns)
+  + **arrange** the observations (rows) in a particular order
+  + **summarize** the data in terms of aspects such as the mean, median, or maximum
+  + **join** multiple data sets together into a single data frame
+
+### Basic syntax examples:
+```{r message=FALSE, warning=FALSE}
+library(ggplot2) # load the ggplot2 library
+library(dplyr)
+
+# take certain columns
+diamonds[, c("cut", "color", "price")] # baseR
+select(diamonds, cut, color, price) # dplyr
+
+# take only columns that start with a "c"
+diamonds[, grep("^c", colnames(diamonds))] # baseR
+select(diamonds, starts_with("c")) # dplyr
+
+# subset certain rows (ideal cut, either E or J in color, within certain price range)
+diamonds[diamonds$cut == "Ideal" & (diamonds$color == "E" | diamonds$color == "J") & diamonds$price > 1000 & diamonds$price < 10000, ] # baseR
+filter(diamonds, cut == "Ideal", color == "E" | color == "J", price > 1000, price < 10000) # dplyr
+
+# add or change column
+diamonds$price_per_carat <- diamonds$price / diamonds$carat # baseR: acts on data frame / tibble, no output here
+mutate(diamonds, price_per_carat = price / carat) # dplyr: returns new data frame, and will be printed
+```
+There are many `select()` helpers: `contains()`, `matches()`, `ends_with()`, `one_of()`, `everything()` (used for rearranging columns) and more.
+
+Now let's add the `%>%` option! Just like shell pipe, this takes the output of the last command and inputs it to the next:
+```{r}
+diamonds %>%
+  select(cut, color, price)
+```
+Notice we don't give `diamonds` as an input to `select()`, because each method uses the input from the previous step.
+
+### Hands-on #1
+Now that you've seen some commands and features, try it yourself! \
+Create a one-liner (no temporary variables!) that outputs a table with the price per carat of ideal-cut diamonds of all colors, with a price under 500$. \
+For bonus points, arrange the results in descending order according to price.
+
+Remember, to add a new code chunk you can click the *Insert Chunk* button on the toolbar or press *Ctrl+Alt+I*. \
+
+
+**Grouping and summrizing:** \
+The next two features are much harder to implement in base R, but pretty straightforward. `summarise()` sums up different statistics into a new data frame, and `group_by()` considers certain groups while acting.
+```{r}
+# we name the column mean_price, the default name (unassigned action) is action(variable): mean(price)
+diamonds %>%
+  summarise(mean_price = mean(price),
+            median_price = median(price), 
+            count = n()) 
+
+# now lets get the mean for all numeric variables
+diamonds %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE) 
+
+# add a grouping variable
+diamonds %>%
+  group_by(cut) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE) 
+
+# add two grouping variables and two functions
+diamonds %>%
+  group_by(cut, color) %>%
+  summarise_at(c("carat", "price"), c(mean=mean, median=median), na.rm = TRUE) 
+
+# find correlation
+diamonds %>%
+  group_by(clarity) %>%
+  summarise(p_value = cor.test(price, carat, method = "pearson")$p.value,
+            r = cor.test(price, carat, method = "pearson")$estimate)
+```
+
+### Hands-on #2
+
+**Step 1** \
+Let's use the `diamonds` dataset to conduct a little experiment: for each diamond cut, we would like to find the *mean*, *median* and *standard deviation* of the estimated diamond size and price. 
+Assume the estimated size can be calculated as a product of the given diamon dimentions (`x`, `y`, `z`). \
+
+**Step 2** \
+We also want to know if there is a linear correlation between the estimated size and the `table` measurement, for each diamond cut and color. For the extra effort - see if you can use `p.adjust()` and the tools we learned to correct the p-values and find the significant ones! \
+
+
+## Tidying data: reshape2 and tidyr 
+
+### Basic syntax
+To pivot `table4a` and `table4b` data into **long format**, we can use `melt()` and `pivot_longer()`.
+```{r message=FALSE, warning=FALSE}
+table4a # cases
+table4b # population
+
+library(reshape2) # masks something from tidyr
+library(tidyr)
+
+melt(table4a, id.vars = "country", value.name = "cases", variable.name = "year") # reshape2
+pivot_longer(table4a, names_to = "year", values_to = "cases", -country) # tidyr
+
+# if we do the same for table4b and merge the tables together
+merge(melt(table4a, id.vars = "country", value.name = "cases", variable.name = "year"), 
+      pivot_longer(table4b, names_to = "year", values_to = "population", -country),
+      by = c("country", "year"))
+```
+
+To change `table2` from long format into wide, use `dcast()` and `pivot_wider()`
+```{r}
+dcast(table2, country+year ~ type, value.var = "count") # reshape2
+pivot_wider(table2, names_from = type, values_from = count) # tidyr
+```
+
+To fix `table3` we need to separate the `rate` column into `cases` and `population`, using `colsplit()` or `separate()`
+```{r}
+# notice tha colsplit only splits the string vector and does not return a data frame
+# while separate returns the full data frame
+colsplit(string = table3$rate, pattern = "/", names = c("cases", "population")) # reshape2
+separate(table3, rate, sep = "/", into = c("cases", "population")) # tidyr
+```
+
+### Hands-on #3 
+Let's do some bioinformatics! 
+Our goal is to generate a LOGO plot (code given below). Use the given code to generate a table in the given format (on screen or your own HTML). \
+
+**Step 1** \
+This code generates the initial table, and we want to reshape and tidy it to match said format.
+
+To deal with NA values, the `replace_na()` method from `tidyr` can be used. It accepts a list of column names and the relevant replacement value: `replace_na(data, list("colA" = 0.5, "colB" = "noSuchThing"))`. \
+```{r}
+library(stringi)
+data.frame(Sample = c(1:500), Sequence = paste0(stri_rand_strings(500, 1, pattern = "[ACG]"), ";",
+                                                stri_rand_strings(500, 1, pattern = "[ACTG]"), ";",
+                                                stri_rand_strings(500, 1, pattern = "[TG]")))
+```
+
+**Step 2** \
+Once the correct format is achieved, use this `ggseqlogo` code to plot a LOGO graph of the data.
+The input data frame variable is named `logo_data`.
+```{r}
+rownames(logo_data) <- logo_data$Base # set row names to be base name as required
+logo_data <- select(logo_data, -Base) # remove the base name column
+# notice that data frame muts be coerced into matrix
+library(ggseqlogo)
+ggseqlogo(data = as.matrix(logo_data), method = 'prob') + 
+  ylab("Probability") +
+  xlab("Position") + 
+  ggtitle("Base Frequencies By Position") + 
+  theme(axis.line = element_line(size = 0.2),
+        axis.ticks = element_line(size = 0.2),
+        plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold"), 
+        axis.title.x = element_text(vjust = -2),
+        axis.title.y = element_text(vjust = 2), 
+        plot.margin = unit(c(15, 15, 15, 15), "points"))
+```
+
+
+  
+# **References**
+https://r4ds.had.co.nz/tidy-data.html
+https://blog.rstudio.com/2014/07/22/introducing-tidyr/
+http://www.milanor.net/blog/reshape-data-r-tidyr-vs-reshape2/
+https://jtr13.github.io/spring19/hx2259_qz2351.html#:~:text=gather()%20vs%20melt()&text=We%20could%20see%20that%20the,a%20correct%20long%20form%20dataset.&text=variable%20for%20both%20functions%20as%20below.
+https://omarwagih.github.io/ggseqlogo/
+
+# **Cheat sheets**
+Data import -`tidyr` cheat sheet: https://github.com/rstudio/cheatsheets/blob/master/data-import.pdf
+R markdown and notebook formats: https://rmarkdown.rstudio.com/authoring_basics.html
