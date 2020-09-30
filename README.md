@@ -11,7 +11,7 @@ _tutorials and instructions will be available here as well_
 ## Tutorials
 ### Git How To
 ### Dockers
-### Mendelay
+### Mendeley
 ### R
 
 ## Code
