@@ -74,6 +74,14 @@ Create a one-liner (no temporary variables!) that outputs a table with the price
 For bonus points, arrange the results in descending order according to price.
 
 Remember, to add a new code chunk you can click the *Insert Chunk* button on the toolbar or press *Ctrl+Alt+I*. \
+```{r}
+diamonds %>%
+  select(carat, cut, color, price) %>%
+  filter(cut == "Ideal", 
+         price < 500) %>%
+  mutate(price_per_carat = price / carat) %>%
+  arrange(-price)
+```
 
 
 **Grouping and summrizing:** \
