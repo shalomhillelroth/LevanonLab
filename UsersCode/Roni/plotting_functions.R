@@ -2,11 +2,10 @@ library(ggplot2)
 
 #function for easy and quick plotting for our needs
 #colors vector should be in ABC order of categories, order is the wanted categories order
-boxPlot <- function(table, xcol, ycol, fillcol=xcol, title, subtitle=NULL, xlab=NULL, ylab=NULL, filllab=NULL, colors = NULL, show_points = TRUE) {
-  g=ggplot(data = table , aes(y=ycol, x=xcol)) +
-    geom_boxplot(aes(fill=fillcol), outlier.shape = NA)+
+boxPlot <- function(table, xcol, ycol, fillcol=xcol, title, subtitle=NULL, xlab=NULL, ylab=NULL, filllab=NULL, colors = NULL, show_points = TRUE, show_outlier = FALSE, expand_lims = TRUE, dodge_points = FALSE, color_points=FALSE) {
+  g=ggplot(data = table , aes(y=ycol, x=xcol, fill=fillcol)) +
+    #geom_boxplot(aes(fill=fillcol), outlier.shape = NA)+
     ylab(ylab) +
-    expand_limits(y = 0) +
     # stat_compare_means(comparisons = comparisons_todo , method = "t.test", p.adjust.methods = "bonferroni", label = "p.signif", hide.ns = T)+
     ggtitle(title) + 
     theme_light() +
@@ -14,7 +13,12 @@ boxPlot <- function(table, xcol, ycol, fillcol=xcol, title, subtitle=NULL, xlab=
           plot.subtitle = element_text(hjust = 0.5, vjust = -0.5),
           axis.ticks = element_line(colour="black"),
           legend.position = "none")
-  if(show_points) { g = g + geom_jitter(position = position_jitter(width = .15, height = 0), size = 1 ,colour = "black") }
+  if(show_outlier) { g = g + geom_boxplot(aes(fill=fillcol), outlier.size = 0.5)} else { g = g + geom_boxplot(aes(fill=fillcol), outlier.shape = NA)}
+  if(show_points & !dodge_points & !color_points) { g = g + geom_jitter(position = position_jitter(width = .15, height = 0), size = 1 ,colour = "black") }
+  if(show_points & !dodge_points & color_points) { g = g + geom_jitter(aes(fill=fillcol), position = position_jitter(width = .15, height = 0), size = 1, shape = 21) }
+  if(show_points & dodge_points & !color_points) { g = g + geom_jitter(position = position_jitterdodge(jitter.width = .1), size = 1 ,colour = "black") }
+  if(show_points & dodge_points & color_points) { g = g + geom_jitter(aes(fill=fillcol), position = position_jitterdodge(jitter.width = .1), size = 1, shape = 21) }
+  if(expand_lims) { g = g + expand_limits(y = 0) }
   if(!is.null(subtitle)) { g = g + labs(subtitle = subtitle) }
   if(!is.null(colors)) { g = g + scale_fill_manual(values = colors) }
   if(!is.null(xlab)) { g = g + xlab(xlab) }
@@ -24,19 +28,49 @@ boxPlot <- function(table, xcol, ycol, fillcol=xcol, title, subtitle=NULL, xlab=
   return(g)
 }
 
+
+#function for easy and quick plotting for our needs
+#colors vector should be in ABC order of categories, order is the wanted categories order
+violinPlot <- function(table, xcol, ycol, fillcol=xcol, title, subtitle=NULL, xlab=NULL, ylab=NULL, filllab=NULL, colors = NULL, show_points = TRUE, show_outlier = FALSE, expand_lims = TRUE, dodge_points = FALSE, draw_quantiles = c(0.5)) {
+  g=ggplot(data = table , aes(y=ycol, x=xcol, fill=fillcol)) +
+    geom_violin(aes(fill=fillcol), draw_quantiles = draw_quantiles) + 
+    ylab(ylab) +
+    # stat_compare_means(comparisons = comparisons_todo , method = "t.test", p.adjust.methods = "bonferroni", label = "p.signif", hide.ns = T)+
+    ggtitle(title) + 
+    theme_light() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold", vjust = -0.5),
+          plot.subtitle = element_text(hjust = 0.5, vjust = -0.5),
+          axis.ticks = element_line(colour="black"),
+          legend.position = "none")
+  if(show_points & !dodge_points) { g = g + geom_jitter(position = position_jitter(width = .15, height = 0), size = 1 ,colour = "black") }
+  if(show_points & dodge_points) { g = g + geom_jitter(position = position_jitterdodge(jitter.width = .1), size = 1 ,colour = "black") }
+  if(expand_lims) { g = g + expand_limits(y = 0) }
+  if(!is.null(subtitle)) { g = g + labs(subtitle = subtitle) }
+  if(!is.null(colors)) { g = g + scale_fill_manual(values = colors) }
+  if(!is.null(xlab)) { g = g + xlab(xlab) }
+  if(!is.null(ylab)) { g = g + ylab(ylab) }
+  if(!is.null(filllab)) { g = g + labs(fill = filllab) }
+  
+  return(g)
+}
+
+
 #colors vector should be the colors by ABC order of Type categories
-scatterPlot <- function(table, xcol, ycol, fillcol, xlab=NULL, ylab=NULL, colorlab=NULL, title, colors=NULL) {
+scatterPlot <- function(table, xcol, ycol, fillcol, xlab=NULL, ylab=NULL, colorlab=NULL, title, subtitle=NULL, colors=NULL, point_size=1) {
   g=ggplot(table, aes(x = xcol, y = ycol, color = fillcol)) + 
-    geom_point() + 
+    geom_point(size = point_size) + 
     ggtitle(title) +
+    expand_limits(y = 0, x = 0) +
     #stat_summary(fun.data=mean_cl_normal) + 
     #geom_smooth(method='lm',formula=y~x, se = F, linetype = "dotted") +
     theme_light() + 
     theme(axis.text.x=element_text(size = 12),
-          plot.title = element_text(hjust = 0.5),
+          plot.title = element_text(hjust = 0.5, face = "bold", vjust = -0.5),
+          plot.subtitle = element_text(hjust = 0.5, vjust = -0.5),
           axis.ticks = element_line(colour="black"),
           legend.position = "bottom")
-  if(!is.null(colors)) { g = g + scale_fill_manual(values = colors) }
+  if(!is.null(subtitle)) { g = g + labs(subtitle = subtitle) }
+  if(!is.null(colors)) { g = g + scale_color_manual(values = colors) }
   if(!is.null(xlab)) { g = g + xlab(xlab) }
   if(!is.null(ylab)) { g = g + ylab(ylab) }
   if(!is.null(colorlab)) { g = g + labs(color = colorlab) }
@@ -60,9 +94,9 @@ scatterPlotLabeled <- function(table, xcol, ycol, fillcol, xlabel, ylabel, title
   return(g)
 }
 
-histPlot <- function(table, varcol, title="Histogram", xlabel=NULL, ylabel = "counts", num_bins=30, color="hotpink4", subtitle = paste0(num_bins, " bins")) {
+histPlot <- function(table, varcol, bin_width, title="Histogram", xlabel=NULL, ylabel = "counts", color="hotpink4", subtitle = paste0("Bin width: ", bin_width)) {
   g=ggplot(data = table , aes(x = varcol)) +
-    geom_histogram(fill = color, bins = num_bins) +
+    geom_histogram(fill = color, binwidth = bin_width) + #bins = num_bins) +
     # expand_limits(y = 0) +
     ggtitle(title, subtitle = subtitle) +
     theme_light() +
@@ -83,11 +117,10 @@ histPlot <- function(table, varcol, title="Histogram", xlabel=NULL, ylabel = "co
   return(g)
 }
 
-freqPlot <- function(table, title, varcol, xlabel, ylabel = "counts", color="hotpink4", num_bins=30, subtitle = paste0(num_bins, " bins")) {
+freqPlot <- function(table, title, varcol, bin_width, xlabel=NULL, ylabel = "counts", color="hotpink4", subtitle = paste0("Bin width: ", bin_width)) {
   g=ggplot(data = table , aes(x = varcol)) +
-    geom_freqpoly(color = color, bins = num_bins) +
-    ylab(ylab) +
-    xlab(xlabel) +
+    geom_freqpoly(color = color, binwidth = bin_width) +
+    ylab(ylabel) +
     # expand_limits(y = 0) +
     ggtitle(title, subtitle = subtitle) +
     theme_light() +
@@ -101,6 +134,8 @@ freqPlot <- function(table, title, varcol, xlabel, ylabel = "counts", color="hot
           plot.subtitle = element_text(hjust = 0.5, vjust = -0.5),
           axis.ticks = element_line(colour="black"),
           legend.position = "none")
+  
+  if(!is.null(xlabel)) { g = g + xlab(xlabel) }
   
   return(g)
 }
@@ -117,7 +152,7 @@ calcStats <- function(x_data, y_data) {
   return(list(pe, sp))
 }
 
-stats_output_format <- function(stats_output_dir, test, correction_method=NULL, suffix = "") {
+stats_output_format <- function(stats_output_dir, res, test, correction_method=NULL, suffix = "") {
   if(!is.null(correction_method)) {
     res <- res %>% group_by(Variable) %>% mutate(PValueAdjusted = p.adjust(PValue, method = correction_method))
     write.csv(res, file = file.path(stats_output_dir, 
@@ -131,9 +166,10 @@ stats_output_format <- function(stats_output_dir, test, correction_method=NULL, 
 }
 
 #function for easier plotting
-plotCorr <- function(data, xcol, ycol, colorcol, xlabel, ylabel, title, stats) {
+plotCorr <- function(data, xcol, ycol, colorcol, xlabel, ylabel, title, colors = NULL, stats=NULL) {
   print(xlabel)
   print(ylabel)
+  if(is.null(stats)) {stats = calcStats(x_data = xcol, y_data = ycol)}
   pe <- stats[[1]]
   sp <- stats[[2]]
   stat_line <- paste0(paste0(strsplit(x = pe$method, split = " ")[[1]][1], " R = " , round(pe$estimate,digits = 3), ", p.value = " , format(pe$p.value,scientific = TRUE)),
@@ -150,6 +186,8 @@ plotCorr <- function(data, xcol, ycol, colorcol, xlabel, ylabel, title, stats) {
     labs(title = title, subtitle = stat_line, color="Group") + # Add notations
     theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"), 
           plot.subtitle = element_text(hjust = 0.5, size = 12, lineheight = 1.5))
+  
+  if(!is.null(colors)) { g = g + scale_color_manual(values = colors) }
   #annotate("text", x = min(xcol)+moveX, y = max(max(ycol), possible_max)-moveY, label = paste0(statName, "'s R =" , round(stat$r[2],digits = 3)),size=4,hjust=0) +
   #annotate("text", x = min(xcol)+moveX, y = max(max(ycol), possible_max)-(diffY+moveY), label = paste0(statName, " pVal = " , format(stat$P[2],scientific = TRUE)), size=4,hjust=0)
   return(g)
@@ -171,21 +209,28 @@ plotCorr <- function(data, xcol, ycol, colorcol, xlabel, ylabel, title, stats) {
 #' @param statistical_tests vector of statistical testing functions to use
 #' @param correction_method p-value correction method as used by p.adjust
 #' @param stats_output_dir output directory
-two_groups_stats_conductor = function(stats_data, combinations, var_columns, class_col, 
-                                      statistical_tests, correction_method=NULL, stats_output_dir=NULL, suffix = "") {
+two_groups_stats_conductor = function(stats_data, combinations, var_columns, class_col, statistical_tests, 
+                                      correction_method=NULL, stats_output_dir=NULL, suffix = "", verbose = FALSE) {
   # make into data fame type to allow base operations
   stats_data = as.data.frame(stats_data)
   # iterate over tests
   for (test in statistical_tests) {
+    if (verbose) {print(test)} # notify on verbos
     # iterate over variables
     res = data.frame()
     for (variable in var_columns) {
+      if (verbose) {print(variable)} # notify on verbose
+      #pass if variable does not exist
+      if (!variable %in% colnames(stats_data)) 
+        next
       # iterate over comparisons
       for (pair in combinations) {
+        if (verbose) {print(pair)} # notify on verbos
         # get indexes
         a_indexes = stats_data[class_col == pair[1],variable]
         b_indexes = stats_data[class_col == pair[2],variable]
 
+        if (verbose) {print(a_indexes); print(b_indexes)} # notify on verbos
         # if observation number allows - calculate p-value
         if (length(na.omit(a_indexes)) > 2 & length(na.omit(b_indexes)) > 2) 
           pval = test(a_indexes, b_indexes)$p.value
@@ -211,26 +256,39 @@ two_groups_stats_conductor = function(stats_data, combinations, var_columns, cla
       res <- res %>% group_by(Variable) %>% mutate(PValueAdjusted = p.adjust(PValue, method = correction_method))
       return(res)
     }
-    stats_output_format(stats_output_dir = stats_output_dir, test = test, correction_method = correction_method, suffix = suffix)
+    stats_output_format(stats_output_dir = stats_output_dir, res = res, test = test, correction_method = correction_method, suffix = suffix)
   }
 }
 
 #' Conducts a paired statistical test on two groups of values.
 two_groups_paired_stats_conductor = function(stats_data, combinations, var_columns, pair_col, class_col,
-                                             statistical_tests, stats_output_dir=NULL, correction_method = NULL, suffix = "") {
+                                             statistical_tests, stats_output_dir=NULL, correction_method = NULL, 
+                                             suffix = "", verbose = FALSE) {
   # make into data fame type to allow base operations
   stats_data = as.data.frame(stats_data)
   for (test in statistical_tests) {
+    if (verbose) {print(test)} # notify on verbos
+    # initialize data frame
     res = data.frame()
     for (variable in var_columns) {
+      if (verbose) {print(variable)} # notify on verbose
+      #pass if variable does not exist
+      if (!variable %in% colnames(stats_data)) 
+        next
       for (pair in combinations) {
+        if (verbose) {print(pair)} # notify on verbos
+        # get indexes
         a_indexes = stats_data[class_col == pair[1],c(variable, pair_col)]
         b_indexes = stats_data[class_col == pair[2],c(variable, pair_col)]
+        # sort by repeat
         a_indexes = a_indexes[order(a_indexes[,pair_col]),variable]
         b_indexes = b_indexes[order(b_indexes[,pair_col]),variable]
         # mean_a = mean(a_indexes)
         # mean_b = mean(b_indexes)
-        if (length(na.omit(a_indexes)) > 3 & length(na.omit(b_indexes)) > 3) 
+        # assert length
+        if (length(a_indexes)!=length(b_indexes))
+          stop("Groups have different number of values")
+        else if (length(na.omit(a_indexes)) > 3 & length(na.omit(b_indexes)) > 3) 
           pval = test(a_indexes, b_indexes, paired = T)$p.value
         else 
           pval = NA
@@ -252,20 +310,25 @@ two_groups_paired_stats_conductor = function(stats_data, combinations, var_colum
       return(res) 
     if (is.null(stats_output_dir))
       return(res %>% group_by(Variable) %>% mutate(PValueAdjusted = p.adjust(PValue, method = correction_method))) 
-    stats_output_format(stats_output_dir = stats_output_dir, test = test, correction_method = correction_method, suffix = suffix)
+    stats_output_format(stats_output_dir = stats_output_dir, res = res, test = test, correction_method = correction_method, suffix = suffix)
   }
 }
 ### conducts a statistical test on one group of values
 normality_stats_conductor = function(stats_data, var_columns, class_col,
                                      statistical_test = shapiro.test, test_name = "shapiro.test",
                                      correction_method=NULL, stats_output_dir=NULL, suffix = "") {
+  stats_data = as.data.frame(stats_data)
   res = data.frame()
   for (variable in var_columns) {
-    for (g in unique(stats_data$class_col)) {
-      a_indexes = stats_data[stats_data$class_col == g,variable]
-      # mean_a = mean(a_indexes)
-      pval = statistical_test(a_indexes)$p.value
-      # std_a = sd(a_indexes)
+    #pass if variable does not exist
+    if (!variable %in% colnames(stats_data)) 
+      next
+    for (g in unique(class_col)) {
+      a_indexes = stats_data[class_col == g,variable]
+      if (length(na.omit(a_indexes)) > 3 & unique(na.omit(a_indexes)) > 1) 
+        pval = statistical_test(a_indexes)$p.value
+      else
+        pval = NA
       
       res = rbind(res, as.data.frame(list(TestedValue = g,
                                           Variable = variable,
@@ -276,11 +339,10 @@ normality_stats_conductor = function(stats_data, var_columns, class_col,
                                           PValue = signif(pval, digits = 4))))
     }
   }
-  
   if (is.null(stats_output_dir) & is.null(correction_method))
     return(res) 
   if (is.null(stats_output_dir))
     return(res %>% group_by(Variable) %>% mutate(PValueAdjusted = p.adjust(PValue, method = correction_method))) 
-  stats_output_format(stats_output_dir = stats_output_dir, test = test, correction_method = correction_method, suffix = suffix)  
+  stats_output_format(stats_output_dir = stats_output_dir, res = res, test = statistical_test, correction_method = correction_method, suffix = suffix)  
   
 }
